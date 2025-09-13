@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1, user-scalable=no"/>
   <title>Hold’em&SHOT (.io)</title>
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b0e14"/>
   <style>
     :root { --banner-h: 90px; }
@@ -62,8 +62,14 @@
     <button id="install" class="btn" hidden>앱 설치</button>
   </div>
 
+  <!-- 🔗 여기 한 줄: Render 서버 WebSocket 고정 -->
   <script>
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
+    window.WS_URL = "wss://holdemnshot.onrender.com/ws";
+  </script>
+
+  <!-- PWA 설치 & SW 등록 -->
+  <script>
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
     let deferredPrompt;
     const installBtn = document.getElementById('install');
     window.addEventListener('beforeinstallprompt', (e)=>{
@@ -76,13 +82,11 @@
       deferredPrompt = null;
       installBtn.hidden = true;
     });
-    // Prevent zoom on input focus iOS
+    // iOS 입력 확대 방지
     document.addEventListener('gesturestart', (e)=>e.preventDefault());
   </script>
-  <script>
-    // You can override WS endpoint by defining window.WS_URL in a inline script in your hosting page.
-    window.WS_URL = window.WS_URL || '';
-  </script>
-  <script type="module" src="/client.js"></script>
+
+  <!-- 게임 클라이언트 -->
+  <script type="module" src="client.js"></script>
 </body>
 </html>
