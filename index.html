@@ -161,6 +161,7 @@
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
 }
+  window.HS_SERVER_URL = "wss://holdemshot.onrender.com";
 </script>
 </body>
 </html>
