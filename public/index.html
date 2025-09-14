@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0e0f13">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Hold'em & SHOT">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" sizes="512x512" href="icons/icon-512.png">
+  <title>Hold’em & SHOT</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>🎲 Hold’em &amp; SHOT</h1>
+      <p class="sub">Quick Match / Room / Offline – PWA</p>
+
+      <div class="row" style="margin-bottom:12px;">
+        <div>
+          <label for="nickname"><small class="muted">닉네임</small></label>
+          <input id="nickname" type="text" placeholder="Enter your nickname" autocomplete="nickname" inputmode="text">
+        </div>
+        <div>
+          <label><small class="muted">서버 상태</small></label><br>
+          <span id="srvStatus" class="status"><span id="dot" class="dot"></span><span id="srvText">Checking…</span></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btnPlay" class="btn btn-primary">▶ Play (Quick Match)</button>
+        <button id="btnCreate" class="btn">＋ Create Room</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="card" style="padding:12px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="roomCode" type="text" placeholder="Enter room code" style="flex:1;">
+            <button id="btnJoin" class="btn">Join Room</button>
+          </div>
+          <small class="muted">코드 예: <span class="kbd">A7K2FQ</span></small>
+        </div>
+      </div>
+
+      <div id="connecting" class="card hidden" style="margin-top:12px;">
+        <b>Connecting</b>… 매칭 중입니다. (최대 8초)
+      </div>
+
+      <div class="footer">
+        <div>오프라인 시 <b>AI 모드</b>로 자동 시작됩니다.</div>
+        <div style="margin-top:6px;"><button id="btnRetry" class="btn btn-ghost">Retry 연결</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+    }
+  </script>
+</body>
+</html>

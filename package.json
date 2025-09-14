@@ -1,0 +1,19 @@
+{
+  "name": "holdem-shot-fullstack",
+  "version": "1.0.0",
+  "description": "Hold’em & SHOT – Single-service PWA + Node/Express (Render-ready)",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "nanoid": "^5.0.7"
+  }
+}
