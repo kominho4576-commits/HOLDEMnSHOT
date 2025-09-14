@@ -13,6 +13,7 @@ let selectedToExchange = new Set();
 let maxExchangePerPhase = 2;
 let phase = "Deal"; // Deal -> Flop -> Turn -> River -> Showdown
 let roundNo = 1;
+let inGame = false;
 
 // UI bindings
 const nickname = el('nickname');
@@ -26,7 +27,7 @@ el('btn-do-join').onclick = ()=> {
   if (!code) return;
   connectWS(()=> ws.send(JSON.stringify({t:"joinRoom", code, name:getName(), bullets:getBullets()})));
 };
-el('btn-leave-room').onclick = ()=> { ws?.send(JSON.stringify({t:'leaveRoom'})); show('panel-home'); };
+el('btn-leave-room').onclick = ()=> { ws?.send(JSON.stringify({t:'leaveRoom'})); inGame=false; show('panel-home'); };
 el('btn-cancel-connect').onclick = cancelConnecting;
 
 el('btn-ready').onclick = ()=> ws?.send(JSON.stringify({t:'ready'}));
@@ -37,7 +38,7 @@ el('btn-resign').onclick = ()=> ws?.send(JSON.stringify({t:'resign'}));
 function getName(){ return nickname.value.trim() || "Player"+Math.floor(Math.random()*999); }
 function getBullets(){ return parseInt(bulletCount.value,10); }
 
-function startQuick(){
+function startQuick(){ inGame=false;
   show('panel-connecting');
   el('countdown').textContent = "8";
   countdownLeft = 8;
@@ -53,7 +54,7 @@ function createRoom(){
   connectWS(()=> ws.send(JSON.stringify({t:"createRoom", name:getName(), bullets:getBullets()})));
 }
 
-function cancelConnecting(){
+function cancelConnecting(){ inGame=false;
   if (ws) { ws.close(); ws = null; }
   show('panel-home');
 }
@@ -87,10 +88,12 @@ function onWS(ev){
   else if (msg.t==="start"){
     // Game start
     applyState(msg.state);
+    inGame = true;
     show('panel-game');
   }
   else if (msg.t==="state"){
     applyState(msg.state);
+    if (!inGame) { inGame = true; show('panel-game'); }
   }
   else if (msg.t==="joinFail"){
     el('joinMsg').textContent = msg.reason || "Join failed";
@@ -112,6 +115,7 @@ function onWS(ev){
 }
 
 function applyState(s){
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
   roundNo = s.round;
   phase = s.phase;
   el('roundNo').textContent = String(roundNo);
