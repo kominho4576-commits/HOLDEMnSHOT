@@ -24,6 +24,7 @@ const bulletCount = el('bulletCount');
 el('btn-play').onclick = startQuick;
 el('btn-create').onclick = createRoom;
 el('btn-join').onclick = ()=>show('panel-join');
+el('btn-retry').onclick = ()=> connectWS(()=>{});
 el('btn-back-join').onclick = ()=>show('panel-home');
 el('btn-do-join').onclick = ()=> {
   const code = el('joinCode').value.trim().toUpperCase();
@@ -187,9 +188,26 @@ function doExchange(){
 }
 
 function fmtCard(c){
-  const ranks = "A23456789TJQK";
-  const suits = {S:"♠",H:"♥",D:"♦",C:"♣"};
-  return c ? (ranks[c[0]] + suits[c[1]]) : "??";
+  // Robust formatter: accepts 'AS','10D','JK', ['A','S'], {r:'A',s:'S'}
+  if (!c) return "??";
+  if (typeof c !== 'string'){
+    if (Array.isArray(c) && c.length>=2) c = String(c[0]) + String(c[1]);
+    else if (typeof c === 'object' && c !== null && ('r' in c || 'rank' in c)){
+      const r = (c.r || c.rank || '').toString();
+      const s = (c.s || c.suit || '').toString();
+      c = r + s;
+    } else {
+      return "??";
+    }
+  }
+  c = c.toUpperCase();
+  if (c === 'JK') return '🃏';
+  let rank, suit;
+  if (c.startsWith('10')) { rank = '10'; suit = c[2]; }
+  else { rank = c[0]; suit = c[1]; }
+  const suits = {S:'♠', H:'♥', D:'♦', C:'♣'};
+  if (!rank || !suit || !suits[suit]) return "??";
+  return `${rank}${suits[suit]}`;
 }
 
 /* ---------- Keep-Alive (Render Free) ---------- */
@@ -341,7 +359,7 @@ function startLocalAIGame(){
   L.names = {}; L.names[L.youId]=getName(); L.names[L.aiId]=randAIName();
   localStartRound();
   show('panel-game');
-  setConnIndicator('#ffb84d'); // amber to indicate local/offline mode
+  setConnIndicator('#ff3b30'); // amber to indicate local/offline mode
   el('hint').textContent = '오프라인(AI) 모드: 서버 없이 진행 중';
 }
 
