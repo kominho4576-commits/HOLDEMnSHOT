@@ -8,9 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <style>
-    :root{
-      --bg:#0b0d10; --panel:#12161b; --ink:#eaf2ff; --muted:#8aa0b5; --accent:#7fdcff; --ok:#00c882; --bad:#ff3b30; --line:#1e242c;
-    }
+    :root{ --bg:#0b0d10; --panel:#12161b; --ink:#eaf2ff; --muted:#8aa0b5; --accent:#7fdcff; --ok:#00c882; --bad:#ff3b30; --line:#1e242c; }
     *{box-sizing:border-box}
     html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif}
     a{color:var(--accent);text-decoration:none}
@@ -25,7 +23,6 @@
     .btn:hover{background:#121922}
     .btn.primary{background:#101d2a;border-color:#163245}
     .btn.primary:hover{background:#122233}
-    .btn.danger{background:#231215;border-color:#3b1b20}
     .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
     .hr{height:1px;background:var(--line);margin:14px 0}
     .center{display:flex;align-items:center;justify-content:center}
@@ -46,6 +43,10 @@
     .cardRect{width:54px;height:78px;border-radius:8px;border:1px solid #2a3440;background:#0a0f14;display:flex;align-items:center;justify-content:center;font-weight:700}
     .muted{color:var(--muted)}
   </style>
+  <script>
+    // Hard-coded Render WebSocket endpoint
+    window.HS_SERVER_URL='wss://holdemshot.onrender.com';
+  </script>
 </head>
 <body>
 <div id="app">
@@ -77,13 +78,13 @@
 
       <div class="hr"></div>
       <div class="footer">
-        <span>slither.io 스타일 레이아웃 / PWA 설치 지원</span>
+        <span>PWA 설치 지원</span>
         <span id="installHint" class="pill hidden">iOS: 공유 → <b>홈 화면에 추가</b></span>
       </div>
     </div>
   </div>
 
-  <!-- Connecting / Room / Game panels -->
+  <!-- panels -->
   <div class="card hidden" id="panel-connecting" class="center">
     <div class="center" style="flex-direction:column;padding:24px 0">
       <div id="connectRing"></div>
@@ -145,14 +146,12 @@
   </div>
 </div>
 
-<!-- Roulette overlay (canvas) -->
 <div id="rouletteWrap" class="center" style="position:fixed;inset:0;background:#000000e6;">
   <canvas id="roulette" width="1080" height="1920"></canvas>
 </div>
 
 <script type="module" src="client.js"></script>
 <script>
-// iOS PWA install hint
 (function(){
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -161,7 +160,6 @@
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
 }
-  window.HS_SERVER_URL = "wss://holdemshot.onrender.com";
 </script>
 </body>
 </html>

@@ -173,6 +173,25 @@ function fmtCard(c){
   return c ? (ranks[c[0]] + suits[c[1]]) : "??";
 }
 
+/* ---------- Keep-Alive (Render Free) ---------- */
+// 1) Ping over WebSocket when connected
+setInterval(()=>{
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try{ ws.send(JSON.stringify({t:'ping'})); }catch{}
+  }
+}, 20000); // every 20s
+// 2) Optional HTTP keep-warm (if HS_SERVER_URL points to Render)
+(function(){
+  const raw = (window.HS_SERVER_URL || '');
+  if (!raw) return;
+  try{
+    const httpURL = raw.replace(/^wss:/,'https:').replace(/^ws:/,'http:');
+    setInterval(()=>{
+      fetch(httpURL, {mode:'no-cors'}).catch(()=>{});
+    }, 60000); // every 60s
+  }catch{}
+})();
+
 /* ---------- Roulette (Canvas) ---------- */
 let rw = document.getElementById('rouletteWrap');
 let rcv = document.getElementById('roulette');
@@ -284,5 +303,3 @@ function rDraw(){
     rctx.save(); rctx.globalAlpha = flash_a*0.8; rctx.fillStyle="#FF3B30"; rctx.fillRect(0,0,1080,1920); rctx.restore();
   }
 }
-
-/* ---------- End Roulette ---------- */

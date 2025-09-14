@@ -39,23 +39,19 @@ function onMessage(id, m){
   if (m.t==='quick'){
     c.name = m.name || c.name; c.bullets = clamp(m.bullets||3,1,3);
     // Try to pair immediately
-    // remove old entries for this id
     quickQueue = quickQueue.filter(q=>q.id!==id);
     quickQueue.push({id, ts: now()});
     send(c.ws, {t:'connecting'});
     tryMatchQuick();
     // Schedule AI fallback in 8s
     setTimeout(()=>{
-      // Still not in a room?
       const cc = clients.get(id);
       if (!cc || cc.roomCode) return;
-      // Create room vs AI
       const code = genCode();
       const room = {code, players:[id], bullets: c.bullets, state:null};
       rooms.set(code, room);
       cc.roomCode = code;
       sendTo(id, {t:'room', room: {code, players:[id]}});
-      // add AI
       addAIOpponent(code);
     }, 8000);
   }
@@ -76,7 +72,6 @@ function onMessage(id, m){
     room.players.push(id);
     c.roomCode = code;
     broadcastRoom(room, {t:'room', room: {code, players:[...room.players]}});
-    // start a game when two present
     startRound(room);
   }
   else if (m.t==='leaveRoom'){
@@ -98,9 +93,8 @@ function onMessage(id, m){
     if (st.phase!=='Flop' && st.phase!=='Turn' && st.phase!=='River') return;
     if (st.exchangeCount[id]>=2) return;
     const idx = (m.idx||[]).slice(0, 2-st.exchangeCount[id]);
-    // replace cards
     idx.forEach(i => { if (i===0||i===1){ st.hands[id][i] = draw(st); st.exchangeCount[id]++; } });
-    st.exchangeSelectable[id] = [0,1]; // still can pick again until ready or used 2
+    st.exchangeSelectable[id] = [0,1];
     st.message = `${clients.get(id).name}: exchanged ${idx.length}`;
     pushState(room);
   }
@@ -112,13 +106,14 @@ function onMessage(id, m){
     const room = getRoomOf(id); if (!room) return;
     const bang = !!m.bang;
     if (bang){
-      // shooter dies immediately
       const opp = getOpponentId(room, id);
       endGame(room, opp, id);
     }else{
-      // next round
       startRound(room);
     }
+  }
+  else if (m.t==='ping'){
+    // no-op: used to keep Render free instance warm while users are online
   }
 }
 
@@ -127,7 +122,6 @@ function onClose(id){
   if (!c) return;
   leaveRoom(id);
   clients.delete(id);
-  // remove from queue
   quickQueue = quickQueue.filter(q=>q.id!==id);
 }
 
@@ -168,7 +162,6 @@ function leaveRoom(id){
   const room = rooms.get(code); if (!room) return;
   room.players = room.players.filter(p=>p!==id);
   if (room.players.length===0){ rooms.delete(code); return; }
-  // if game ongoing, opponent wins
   if (room.state) {
     const opp = room.players[0];
     endGame(room, opp, id);
@@ -179,7 +172,6 @@ function leaveRoom(id){
 }
 
 function startRound(room){
-  // init deck
   const deck = freshDeck();
   shuffle(deck);
   const st = {
@@ -197,7 +189,7 @@ function startRound(room){
   };
   room.players.forEach(pid=>{
     st.hands[pid] = [draw(st), draw(st)];
-    st.hp[pid] = 1; // 1 life per spec (we track game-level as immediate death in roulette)
+    st.hp[pid] = 1;
     st.ready[pid] = false;
     st.exchangeCount[pid]=0;
     st.exchangeSelectable[pid]=[0,1];
@@ -210,10 +202,8 @@ function startRound(room){
 function tryAdvancePhase(room){
   const st = room.state;
   if (!st) return;
-  // both ready?
   const allReady = room.players.every(pid=>st.ready[pid]);
   if (!allReady) { pushState(room); return; }
-  // advance
   if (st.phase==='Deal'){
     st.phase='Flop'; st.ready = flagReset(st.ready);
     st.board[0]=draw(st); st.board[1]=draw(st); st.board[2]=draw(st);
@@ -234,7 +224,6 @@ function tryAdvancePhase(room){
     aiMaybeAct(room);
   } else if (st.phase==='River'){
     st.phase='Showdown'; st.ready = flagReset(st.ready);
-    // evaluate winner
     const a = room.players[0], b = room.players[1];
     const ra = bestRank(st.hands[a], st.board);
     const rb = bestRank(st.hands[b], st.board);
@@ -249,19 +238,16 @@ function tryAdvancePhase(room){
     }else{
       st.message = message + ` → ${nameOf(winner)} 승리. 패자는 러시안룰렛`;
       pushState(room);
-      // Joker effects
       const loserHasJoker = hasJoker(st.hands[loser], st.board);
       const winnerHasJoker = hasJoker(st.hands[winner], st.board);
       let bullets = room.bullets;
-      if (loserHasJoker) { // 면제
+      if (loserHasJoker) { 
         broadcastRoom(room, {t:'message', text:`${nameOf(loser)} Joker: 러시안룰렛 면제`});
         startRound(room); return;
       }
       if (winnerHasJoker){ bullets += 1; broadcastRoom(room, {t:'message', text:`${nameOf(winner)} Joker: 상대 총알 +1`}); }
       broadcastRoom(room, {t:'roulette', bullets});
     }
-  } else if (st.phase==='Showdown'){
-    // nothing
   }
 }
 
@@ -287,10 +273,7 @@ function serializeStateFor(pid, st){
 }
 
 function nameOf(pid){ return clients.get(parseInt(pid))?.name || "Player"; }
-
-function flagReset(map){
-  const m = {}; Object.keys(map).forEach(k=>m[k]=false); return m;
-}
+function flagReset(map){ const m = {}; Object.keys(map).forEach(k=>m[k]=false); return m; }
 
 /* ---- Cards / Deck ---- */
 function freshDeck(){
@@ -311,7 +294,6 @@ function aiMaybeAct(room){
   if (!ai) return;
   const st = room.state;
   const my = ai;
-  // random small exchange (0~2)
   const k = Math.floor(Math.random()*3);
   const idxs = [];
   for (let i=0;i<k;i++) idxs.push(Math.random()<.5?0:1);
@@ -322,11 +304,10 @@ function aiMaybeAct(room){
   pushState(room);
 }
 
-/* ---- Poker evaluation (7 -> best 5) ---- */
+/* ---- Poker evaluation ---- */
 const RMAP = {'A':14,'K':13,'Q':12,'J':11,'T':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2};
 function bestRank(hand, board){
   const cards = [...hand, ...board.filter(Boolean)];
-  // filter out jokers in evaluation: treat as lowest (rarely appears in standard holdem)
   const filtered = cards.filter(c=>c!=='JK');
   let best = null;
   const n=filtered.length;
@@ -342,7 +323,6 @@ function bestRank(hand, board){
   return best || rank5(filtered.slice(0,5));
 }
 function compareRank(a,b){
-  // compare major then kickers lexicographically
   for (let i=0;i<Math.max(a.val.length,b.val.length);i++){
     const va = a.val[i]||0, vb=b.val[i]||0;
     if (va!==vb) return va-vb;
@@ -350,17 +330,14 @@ function compareRank(a,b){
   return 0;
 }
 function rank5(cards){
-  // cards like "AS","TD"...
   const ranks = cards.map(c=>RMAP[c[0]]).sort((a,b)=>b-a);
   const suits = cards.map(c=>c[1]);
   const counts = new Map();
   ranks.forEach(r=>counts.set(r,(counts.get(r)||0)+1));
   const byCount = [...counts.entries()].sort((a,b)=> (b[1]-a[1]) || (b[0]-a[0]));
   const isFlush = suits.every(s=>s===suits[0]);
-  const uniq = [...new Set(ranks)];
-  let isStraight=false, topStraight=0;
-  // handle A-5 straight
   const rset = new Set(ranks);
+  let isStraight=false, topStraight=0;
   for (let hi=14; hi>=5; hi--){
     const seq = [hi,hi-1,hi-2,hi-3,hi-4];
     if (seq.every(x=>rset.has(x))){ isStraight=true; topStraight=hi; break; }
