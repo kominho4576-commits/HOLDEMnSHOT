@@ -58,6 +58,8 @@ let state = {
 };
 
 // ======= WebSocket & Keepalive =======
+let sendQueue = []; // messages queued before socket OPEN
+
 function resolveWS(){
   if (window.WS_URL) return window.WS_URL;
   const proto = location.protocol==='https:'?'wss':'ws';
@@ -68,10 +70,25 @@ wsEl.textContent = WS_URL;
 
 function connect(){
   socket = new WebSocket(WS_URL);
-  socket.addEventListener('open', ()=> scheduleKeepAlive());
+  socket.addEventListener('open', ()=>{
+    scheduleKeepAlive();
+    // flush queued messages
+    while(sendQueue.length){
+      try{ socket.send(JSON.stringify(sendQueue.shift())); }catch(_){}
+    }
+  });
   socket.addEventListener('message', onMessage);
 }
 connect();
+
+// safe sender
+function sendMsg(obj){
+  if (socket && socket.readyState === 1){
+    socket.send(JSON.stringify(obj));
+  } else {
+    sendQueue.push(obj);
+  }
+}
 
 let pingTimer=null;
 function scheduleKeepAlive(){
@@ -89,9 +106,7 @@ function onMessage(ev){
   if (msg.t==='MATCH_FOUND'){ hideConnecting(); }
   if (msg.t==='STATE'){ 
     state = msg.state; 
-    // server sends bothReady flag during exchange
     if (state.phase==='FLOP' || state.phase==='TURN' || state.phase==='RIVER'){
-      // non-exchange viewing; local ready reset
       iAmReady = false; selected.clear();
     }
     updateUI();
@@ -110,14 +125,14 @@ btnPlay.onclick = ()=>{
   myName = cleanName(inpName.value);
   preferredBullets = +selBullets.value || 1;
   showConnecting("Searching players…");
-  socket.send(JSON.stringify({t:'JOIN_RANDOM', name: myName, bullets: preferredBullets}));
+  sendMsg({t:'JOIN_RANDOM', name: myName, bullets: preferredBullets});
   ovrHome.style.display='none';
 };
 btnCreate.onclick = ()=>{
   myName = cleanName(inpName.value);
   preferredBullets = +selBullets.value || 1;
   showConnecting("Waiting for your friend…");
-  socket.send(JSON.stringify({t:'CREATE_ROOM', name: myName, bullets: preferredBullets}));
+  sendMsg({t:'CREATE_ROOM', name: myName, bullets: preferredBullets});
   ovrHome.style.display='none';
 };
 btnJoin.onclick = ()=>{
@@ -125,20 +140,19 @@ btnJoin.onclick = ()=>{
   const code = (inpCode.value||'').trim().toUpperCase();
   if (!code) return;
   showConnecting("Joining room…");
-  socket.send(JSON.stringify({t:'JOIN_ROOM', code, name: myName}));
+  sendMsg({t:'JOIN_ROOM', code, name: myName});
   ovrHome.style.display='none';
 };
 
 // ======= Exchange / Next / Resign =======
 btnReady.onclick = ()=>{
   if (!state.canExchange || iAmReady) return;
-  // send indices and mark ready
-  socket.send(JSON.stringify({t:'READY_EXCHANGE', indices: Array.from(selected)}));
+  sendMsg({t:'READY_EXCHANGE', indices: Array.from(selected)});
   iAmReady = true;
   updateUI();
 };
-btnNext.onclick  = ()=> socket.send(JSON.stringify({t:'CONFIRM_NEXT'}));
-btnResign.onclick= ()=> socket.send(JSON.stringify({t:'RESIGN'}));
+btnNext.onclick  = ()=> sendMsg({t:'CONFIRM_NEXT'});
+btnResign.onclick= ()=> sendMsg({t:'RESIGN'});
 
 // ======= Canvas interaction =======
 canvas.addEventListener('click', e=>{
@@ -147,7 +161,7 @@ canvas.addEventListener('click', e=>{
   const x = (e.clientX-rect.left)*DPR;
   const y = (e.clientY-rect.top)*DPR;
 
-  const cx=W/2, cw=80*DPR, ch=120*DPR, gap=90*DPR, myY=H-140*DPR, myGap=90*DPR;
+  const cx=W/2, cw=80*DPR, ch=120*DPR, myY=H-140*DPR, myGap=90*DPR;
   for(let i=0;i<2;i++){
     const rx = cx + (i===0?-myGap:myGap) - cw/2;
     const ry = myY - ch/2;
@@ -166,7 +180,6 @@ function updateUI(){
   btnReady.disabled = !(state.canExchange && !iAmReady);
   btnNext.disabled  = state.canExchange || !state.canProceed; // Next disabled during exchange
   btnResign.disabled= (state.seat==null);
-
   draw();
 }
 
@@ -260,7 +273,6 @@ function prettyCard(c){ const r=c.rank===14?'A':c.rank===13?'K':c.rank===12?'Q':
 function prettyHand(h){ return h.map(prettyCard).join(' '); }
 
 function showShowdown(d){
-  // {winner, hands:{A,B}, names:{A,B}}
   const a=d.names.A, b=d.names.B;
   const winTxt = d.winner===-1 ? 'Draw' : `Winner: ${d.winner===0?a:b}`;
   openModal(`
@@ -276,7 +288,6 @@ function showShowdown(d){
 }
 
 function showRoulette(d){
-  // {bullets, fired:null|bool, loserSeat, names:{A,B}}
   const loser = d.loserSeat===0? d.names.A : d.names.B;
   const body = d.fired==null ? `<p>Chamber spinning…</p>` :
                (d.fired ? `<p style="font-size:18px">💥 ${loser} is dead.</p>` :
