@@ -59,14 +59,19 @@ function cancelConnecting(){ inGame=false;
   show('panel-home');
 }
 
+function setConnIndicator(color){
+  const dot = document.getElementById('connIndicator');
+  if (dot) dot.style.background = color;
+}
 function connectWS(onOpen){
   if (ws) try{ws.close()}catch{}
   const proto = (location.protocol === 'https:') ? 'wss' : 'ws';
   const url = (window.HS_SERVER_URL || `${proto}://${location.host}`);
   ws = new WebSocket(url);
-  ws.onopen = onOpen;
+  ws.onopen = ()=>{ setConnIndicator('#00c882'); if (onOpen) onOpen(); };
   ws.onmessage = onWS;
-  ws.onclose = ()=> console.log("ws closed");
+  ws.onclose = ()=>{ setConnIndicator('#ff3b30'); console.log("ws closed"); };
+  ws.onerror = ()=>{ setConnIndicator('#ff3b30'); };
 }
 
 function onWS(ev){
