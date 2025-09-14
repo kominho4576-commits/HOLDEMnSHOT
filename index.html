@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Hold'em&SHOT</title>
+  <meta name="theme-color" content="#0b0d10">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <style>
+    :root{
+      --bg:#0b0d10; --panel:#12161b; --ink:#eaf2ff; --muted:#8aa0b5; --accent:#7fdcff; --ok:#00c882; --bad:#ff3b30; --line:#1e242c;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif}
+    a{color:var(--accent);text-decoration:none}
+    #app{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{width:min(720px,96vw);border:1px solid var(--line);background:linear-gradient(180deg,#11161b,#0f1419);border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:22px 22px 16px}
+    .title{font-weight:800;letter-spacing:.2px;font-size:28px;display:flex;align-items:center;gap:10px}
+    .subtitle{color:var(--muted);margin-top:6px;margin-bottom:18px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row > * {flex:1}
+    input[type=text], select{width:100%;padding:14px 14px;border-radius:14px;border:1px solid var(--line);background:#0c1117;color:var(--ink);font-size:16px;outline:none}
+    .btn{cursor:pointer;user-select:none;text-align:center;padding:14px 18px;border-radius:14px;border:1px solid var(--line);background:#0e1318;color:var(--ink);font-weight:700;letter-spacing:.2px}
+    .btn:hover{background:#121922}
+    .btn.primary{background:#101d2a;border-color:#163245}
+    .btn.primary:hover{background:#122233}
+    .btn.danger{background:#231215;border-color:#3b1b20}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .hr{height:1px;background:var(--line);margin:14px 0}
+    .center{display:flex;align-items:center;justify-content:center}
+    .big{font-size:20px}
+    .hidden{display:none !important}
+    .stack{display:flex;flex-direction:column;gap:10px}
+    .footer{margin-top:10px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;align-items:center}
+    .topbar{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0b0d10,#0b0d1000);padding-bottom:10px}
+    .nav{display:flex;gap:8px;margin-top:8px;position:sticky;top:38px}
+    canvas{touch-action:manipulation}
+    #rouletteWrap{display:none}
+    #connectRing{width:64px;height:64px;border:6px solid #223; border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; margin-bottom:16px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .pill{border:1px solid var(--line);padding:6px 10px;border-radius:999px;color:var(--muted);font-size:13px}
+    .badge{padding:4px 8px;border-radius:8px;background:#101820;border:1px solid #1b2a36;color:#bfe7ff;font-size:12px}
+    .readyBar{display:flex;gap:10px;align-items:center;justify-content:space-between;background:#0e141a;border:1px dashed #20303f;border-radius:12px;padding:10px}
+    .cards{display:flex;gap:8px;flex-wrap:wrap}
+    .cardRect{width:54px;height:78px;border-radius:8px;border:1px solid #2a3440;background:#0a0f14;display:flex;align-items:center;justify-content:center;font-weight:700}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="card" id="panel-home">
+    <div class="title">🂡 Hold'em<span style="opacity:.6">&</span>SHOT <span class="badge">PWA</span></div>
+    <div class="subtitle">1v1 Texas Hold'em + 러시안룰렛 (조커 효과 포함) — Quick Match 8초 대기 후 AI 매칭</div>
+
+    <div class="stack">
+      <div class="row">
+        <div>
+          <div class="pill">Nickname</div>
+          <input id="nickname" type="text" placeholder="Enter nickname" maxlength="16" autocomplete="off">
+        </div>
+        <div>
+          <div class="pill">Bullets (1~3)</div>
+          <select id="bulletCount">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div class="btn primary" id="btn-play">Play (Quick Match)</div>
+        <div class="btn" id="btn-create">Create Room</div>
+        <div class="btn" id="btn-join">Join Room</div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="footer">
+        <span>slither.io 스타일 레이아웃 / PWA 설치 지원</span>
+        <span id="installHint" class="pill hidden">iOS: 공유 → <b>홈 화면에 추가</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connecting / Room / Game panels -->
+  <div class="card hidden" id="panel-connecting" class="center">
+    <div class="center" style="flex-direction:column;padding:24px 0">
+      <div id="connectRing"></div>
+      <div class="big">Connecting… <span id="countdown">8</span>s</div>
+      <div class="subtitle">상대가 없으면 AI와 자동 매칭됩니다.</div>
+      <div class="btn" id="btn-cancel-connect">Cancel</div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="panel-room">
+    <div class="title">🗝️ Private Room</div>
+    <div class="subtitle">코드를 공유하면 친구가 입장할 수 있어요.</div>
+    <div class="readyBar">
+      <div>Room Code: <b id="roomCode"></b></div>
+      <div class="btn" id="btn-leave-room">Leave</div>
+    </div>
+    <div class="hr"></div>
+    <div id="roomStatus" class="muted">상대를 기다리는 중…</div>
+  </div>
+
+  <div class="card hidden" id="panel-join">
+    <div class="title">🔑 Join Room</div>
+    <div class="row">
+      <input id="joinCode" type="text" placeholder="Enter code">
+      <div class="btn primary" id="btn-do-join">Join</div>
+      <div class="btn" id="btn-back-join">Back</div>
+    </div>
+    <div id="joinMsg" class="muted"></div>
+  </div>
+
+  <div class="card hidden" id="panel-game">
+    <div class="topbar">
+      <div class="title">🎴 Round <span id="roundNo">1</span> <span class="badge" id="whoBadge"></span></div>
+      <div class="nav">
+        <div class="btn" id="btn-resign">Resign</div>
+        <div class="btn" id="btn-ready">Ready</div>
+        <div class="btn" id="btn-next">Next</div>
+        <div class="btn" id="btn-exchange">Exchange (0/2)</div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="readyBar">
+        <div>You: <b id="youName"></b> <span class="pill">❤ <span id="youHP">1</span></span></div>
+        <div>Opponent: <b id="oppName"></b> <span class="pill">❤ <span id="oppHP">1</span></span></div>
+      </div>
+
+      <div class="pill">Your Hand</div>
+      <div id="hand" class="cards"></div>
+
+      <div class="pill">Board</div>
+      <div id="board" class="cards"></div>
+
+      <div class="readyBar">
+        <div>Phase: <b id="phaseName">Deal</b></div>
+        <div>Hints: <span class="muted" id="hint">교환은 각 라운드마다 0~2장, 둘 다 Ready면 진행</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Roulette overlay (canvas) -->
+<div id="rouletteWrap" class="center" style="position:fixed;inset:0;background:#000000e6;">
+  <canvas id="roulette" width="1080" height="1920"></canvas>
+</div>
+
+<script type="module" src="client.js"></script>
+<script>
+// iOS PWA install hint
+(function(){
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isIOS && !isStandalone) document.getElementById('installHint').classList.remove('hidden');
+})();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+}
+</script>
+</body>
+</html>
