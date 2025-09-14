@@ -14,6 +14,9 @@ let maxExchangePerPhase = 2;
 let phase = "Deal"; // Deal -> Flop -> Turn -> River -> Showdown
 let roundNo = 1;
 let inGame = false;
+let localMode = false; // offline fallback
+let L = null; // local state container when localMode
+
 
 // UI bindings
 const nickname = el('nickname');
@@ -30,15 +33,21 @@ el('btn-do-join').onclick = ()=> {
 el('btn-leave-room').onclick = ()=> { ws?.send(JSON.stringify({t:'leaveRoom'})); inGame=false; show('panel-home'); };
 el('btn-cancel-connect').onclick = cancelConnecting;
 
-el('btn-ready').onclick = ()=> ws?.send(JSON.stringify({t:'ready'}));
-el('btn-next').onclick = ()=> ws?.send(JSON.stringify({t:'next'}));
+el('btn-ready').onclick = ()=> { if(localMode) localReady(); else ws?.send(JSON.stringify({t:'ready'})); };
+el('btn-next').onclick = ()=> { if(localMode) localNext(); else ws?.send(JSON.stringify({t:'next'})); };
 el('btn-exchange').onclick = doExchange;
-el('btn-resign').onclick = ()=> ws?.send(JSON.stringify({t:'resign'}));
+el('btn-resign').onclick = ()=> { if(localMode){ alert('You resigned. AI wins.'); show('panel-home'); localMode=false; inGame=false; } else ws?.send(JSON.stringify({t:'resign'})); };
 
 function getName(){ return nickname.value.trim() || "Player"+Math.floor(Math.random()*999); }
 function getBullets(){ return parseInt(bulletCount.value,10); }
 
 function startQuick(){ inGame=false;
+  const wsOpen = (ws && ws.readyState===WebSocket.OPEN);
+  if (!wsOpen){
+    // offline fallback
+    startLocalAIGame();
+    return;
+  }
   show('panel-connecting');
   el('countdown').textContent = "8";
   countdownLeft = 8;
@@ -171,7 +180,8 @@ function updateExchangeLabel(){
 
 function doExchange(){
   if (selectedToExchange.size===0) return;
-  ws?.send(JSON.stringify({t:'exchange', idx:[...selectedToExchange]}));
+  if(localMode){ localExchange([...selectedToExchange]); }
+  else ws?.send(JSON.stringify({t:'exchange', idx:[...selectedToExchange]}));
   selectedToExchange.clear();
   updateExchangeLabel();
 }
@@ -311,4 +321,155 @@ function rDraw(){
   if (flash_a>0){
     rctx.save(); rctx.globalAlpha = flash_a*0.8; rctx.fillStyle="#FF3B30"; rctx.fillRect(0,0,1080,1920); rctx.restore();
   }
+}
+
+/* ---------- Local Offline Mode (fallback vs AI) ---------- */
+function startLocalAIGame(){
+  localMode = true; inGame = true;
+  // init local state
+  L = {
+    round: 0,
+    bullets: getBullets(),
+    deck: [],
+    hands: {},
+    board: [null,null,null,null,null],
+    ready: {},
+    exchangeCount: {},
+    message: ""
+  };
+  L.youId = 1; L.aiId = 2;
+  L.names = {}; L.names[L.youId]=getName(); L.names[L.aiId]=randAIName();
+  localStartRound();
+  show('panel-game');
+  setConnIndicator('#ffb84d'); // amber to indicate local/offline mode
+  el('hint').textContent = '오프라인(AI) 모드: 서버 없이 진행 중';
+}
+
+function localStartRound(){
+  L.round += 1;
+  L.deck = freshDeck(); shuffle(L.deck);
+  L.board = [null,null,null,null,null];
+  L.hands[L.youId] = [drawLocal(), drawLocal()];
+  L.hands[L.aiId]  = [drawLocal(), drawLocal()];
+  L.ready[L.youId]=false; L.ready[L.aiId]=false;
+  L.exchangeCount[L.youId]=0; L.exchangeCount[L.aiId]=0;
+  L.message = "카드 배분 완료. 둘 다 Ready → Flop";
+  pushLocalState();
+}
+
+function pushLocalState(){
+  const s = {
+    round: L.round,
+    phase: L.phase || 'Deal',
+    board: L.board.slice(),
+    you: { name: L.names[L.youId], hp: 1, hand: L.hands[L.youId].slice(), exchangeSelectable: [0,1] },
+    opp:  { name: L.names[L.aiId], hp: 1, hand: ["??","??"], exchangeSelectable: []},
+    turnNote: "",
+    message: L.message
+  };
+  applyState(s);
+}
+
+function localReady(){
+  if (!localMode) return;
+  if (!L.phase || L.phase==='Deal'){
+    L.phase='Flop'; L.board[0]=drawLocal(); L.board[1]=drawLocal(); L.board[2]=drawLocal();
+    L.message = "Flop 공개. 각자 0~2장 교환 가능 → Ready면 Turn";
+    // AI exchange randomly 0~2
+    localAIExchange();
+    pushLocalState();
+  } else if (L.phase==='Flop'){
+    L.phase='Turn'; L.board[3]=drawLocal(); L.message="Turn 공개. 교환 가능 → Ready면 River"; localAIExchange(); pushLocalState();
+  } else if (L.phase==='Turn'){
+    L.phase='River'; L.board[4]=drawLocal(); L.message="River 공개. 마지막 교환 → Ready면 Showdown"; localAIExchange(); pushLocalState();
+  } else if (L.phase==='River'){
+    L.phase='Showdown';
+    const ra = bestRankLocal(L.hands[L.youId], L.board);
+    const rb = bestRankLocal(L.hands[L.aiId], L.board);
+    let winner=null, loser=null, tie=false;
+    const cmp = compareRankLocal(ra, rb);
+    if (cmp>0){ winner=L.youId; loser=L.aiId; } else if (cmp<0){ winner=L.aiId; loser=L.youId; } else tie=true;
+    let msg = `Showdown: ${L.names[L.youId]} ${ra.name} vs ${L.names[L.aiId]} ${rb.name}`;
+    if (tie){
+      L.message = msg + " → 무승부, 다음 라운드"; pushLocalState(); setTimeout(localStartRound, 600);
+    } else {
+      L.message = msg + ` → ${L.names[winner]} 승리. 패자는 러시안룰렛`; pushLocalState();
+      // Joker effects
+      const loserHasJ = hasJokerLocal(L.hands[loser], L.board);
+      const winnerHasJ = hasJokerLocal(L.hands[winner], L.board);
+      let bullets = L.bullets;
+      if (loserHasJ){ el('hint').textContent = `${L.names[loser]} Joker: 러시안룰렛 면제`; setTimeout(localStartRound, 600); return; }
+      if (winnerHasJ){ bullets += 1; el('hint').textContent = `${L.names[winner]} Joker: 상대 총알 +1`; }
+      startRoulette(bullets, (bang)=>{
+        if (bang){
+          alert(`Winner: ${L.names[winner]} / Loser: ${L.names[loser]}`);
+          show('panel-home'); localMode=false; inGame=false;
+        } else {
+          localStartRound();
+        }
+      });
+    }
+  }
+}
+
+function localNext(){ localReady(); }
+
+function localExchange(indexes){
+  if (!localMode) return;
+  const you = L.youId;
+  if (!L.phase || L.phase==='Deal') return;
+  if (L.exchangeCount[you]>=2) return;
+  const allow = Math.min(2 - L.exchangeCount[you], indexes.length);
+  for (let i=0;i<allow;i++){
+    const idx = indexes[i];
+    if (idx===0 || idx===1){ L.hands[you][idx] = drawLocal(); L.exchangeCount[you]++; }
+  }
+  L.message = `${L.names[you]}: exchanged ${allow}`;
+  pushLocalState();
+}
+
+function localAIExchange(){
+  const ai = L.aiId;
+  const k = Math.floor(Math.random()*3);
+  for (let i=0;i<k && L.exchangeCount[ai]<2;i++){
+    const idx = (Math.random()<.5?0:1);
+    L.hands[ai][idx] = drawLocal();
+    L.exchangeCount[ai]++;
+  }
+}
+
+/* ---- Local helpers (deck/rank) ---- */
+function freshDeck(){ const suits=['S','H','D','C']; const ranks=['A','2','3','4','5','6','7','8','9','T','J','Q','K']; const d=[]; for(const s of suits) for(const r of ranks) d.push(r+s); d.push('JK'); d.push('JK'); return d; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } }
+function drawLocal(){ return L.deck.pop(); }
+function hasJokerLocal(hand, board){ return [...hand, ...board.filter(Boolean)].includes('JK'); }
+function randAIName(){ const pool=['CobaltBot','NeonQueen','PaperTiger','SilentJack','K-Dealer','Ghost512','LunaAI','Maverick','Golem','Basilisk']; return pool[(Math.random()*pool.length)|0]; }
+
+const RMAPL = {'A':14,'K':13,'Q':12,'J':11,'T':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2};
+function bestRankLocal(hand, board){
+  const cards = [...hand, ...board.filter(Boolean)].filter(c=>c!=='JK');
+  let best=null; const n=cards.length;
+  function choose5(s,p){ if (p.length===5){ const r=rank5Local(p); if(!best || compareRankLocal(r,best)>0) best=r; return; } for(let i=s;i<n;i++) choose5(i+1, p.concat(cards[i])); }
+  choose5(0, []); return best || rank5Local(cards.slice(0,5));
+}
+function compareRankLocal(a,b){ for(let i=0;i<Math.max(a.val.length,b.val.length);i++){ const va=a.val[i]||0, vb=b.val[i]||0; if(va!==vb) return va-vb; } return 0; }
+function rank5Local(cards){
+  const ranks = cards.map(c=>RMAPL[c[0]]).sort((a,b)=>b-a);
+  const suits = cards.map(c=>c[1]);
+  const counts = new Map(); ranks.forEach(r=>counts.set(r,(counts.get(r)||0)+1));
+  const byCount = [...counts.entries()].sort((a,b)=>(b[1]-a[1])||(b[0]-a[0]));
+  const isFlush = suits.every(s=>s===suits[0]);
+  const rset = new Set(ranks);
+  let isStraight=false, top=0;
+  for(let hi=14;hi>=5;hi--){ const seq=[hi,hi-1,hi-2,hi-3,hi-4]; if (seq.every(x=>rset.has(x))){ isStraight=true; top=hi; break; } }
+  if (!isStraight && [14,5,4,3,2].every(x=>rset.has(x))){ isStraight=true; top=5; }
+  if (isStraight && isFlush) return {name:'Straight Flush', val:[8,top]};
+  if (byCount[0][1]===4) return {name:'Four of a Kind', val:[7,byCount[0][0],byCount[1][0]]};
+  if (byCount[0][1]===3 && byCount[1][1]===2) return {name:'Full House', val:[6,byCount[0][0],byCount[1][0]]};
+  if (isFlush) return {name:'Flush', val:[5, ...ranks]};
+  if (isStraight) return {name:'Straight', val:[4, top]};
+  if (byCount[0][1]===3){ const ks=ranks.filter(r=>r!==byCount[0][0]); return {name:'Three of a Kind', val:[3, byCount[0][0], ...ks]}; }
+  if (byCount[0][1]===2 && byCount[1][1]===2){ const hi=Math.max(byCount[0][0],byCount[1][0]); const lo=Math.min(byCount[0][0],byCount[1][0]); const k=ranks.find(r=>r!==hi && r!==lo); return {name:'Two Pair', val:[2,hi,lo,k||0]}; }
+  if (byCount[0][1]===2){ const p=byCount[0][0]; const ks=ranks.filter(r=>r!==p); return {name:'One Pair', val:[1,p,...ks]}; }
+  return {name:'High Card', val:[0, ...ranks]};
 }

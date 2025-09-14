@@ -55,7 +55,7 @@
     <div class="subtitle">1v1 Texas Hold'em + 러시안룰렛 (조커 효과 포함) — Quick Match 8초 대기 후 AI 매칭</div>
 
     <div class="row" style="align-items:center; margin:4px 0 10px 0;">
-      <div id="connIndicator" style="width:14px;height:14px;border-radius:50%;background:#ff3b30;margin-right:6px;border:1px solid #1e242c;"></div>
+      <div id="connIndicator" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b30;margin-right:6px;border:1px solid #1e242c;"></div>
       <span style="font-size:14px;color:var(--muted)">Server</span>
     </div>
     
@@ -105,7 +105,7 @@
     <div class="subtitle">코드를 공유하면 친구가 입장할 수 있어요.</div>
 
     <div class="row" style="align-items:center; margin:4px 0 10px 0;">
-      <div id="connIndicator" style="width:14px;height:14px;border-radius:50%;background:#ff3b30;margin-right:6px;border:1px solid #1e242c;"></div>
+      <div id="connIndicator" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b30;margin-right:6px;border:1px solid #1e242c;"></div>
       <span style="font-size:14px;color:var(--muted)">Server</span>
     </div>
     
@@ -169,6 +169,7 @@
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   if (isIOS && !isStandalone) document.getElementById('installHint').classList.remove('hidden');
 })();
+connectWS(()=>{});
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
 }

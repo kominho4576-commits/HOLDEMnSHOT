@@ -1,5 +1,5 @@
 // Simple PWA service worker (cache-first with version bump)
-const CACHE = 'hs-cache-v4';
+const CACHE = 'hs-cache-v5';
 const ASSETS = [
   './',
   './index.html',
