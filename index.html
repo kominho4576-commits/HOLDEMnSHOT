@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
@@ -9,35 +9,44 @@
   <style>
     :root { --banner-h: 64px; }
     @media (min-width: 768px){ :root { --banner-h: 90px; } }
-    html,body{margin:0;height:100%;background:#0b0e14;color:#e6e6e6;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;}
+    html,body{margin:0;height:100%;background:#0b0e14;color:#e6e6e6;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;}
     body{padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);}
     #banner{height:var(--banner-h);display:flex;align-items:center;justify-content:center;background:#0b0e14;border-bottom:1px solid #222;position:sticky;top:0;z-index:3;}
     #wrap{position:relative;height:calc(100dvh - var(--banner-h) - env(safe-area-inset-top));}
     canvas{display:block;width:100%;height:100%;background:#0b0e14;touch-action:manipulation}
+    /* top chips */
     #topbar{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2;flex-wrap:wrap;justify-content:center}
     .chip{background:#101420;border:1px solid #2a2f3a;border-radius:10px;padding:6px 10px;font-size:12px}
-    #log{position:absolute;left:8px;top:8px;width:min(320px,40vw);max-height:30vh;overflow:auto;font-size:12px;padding:8px;background:#101420;border:1px solid #2a2f3a;border-radius:10px;z-index:2;display:none}
-    .btn{background:#1b1f2a;border:1px solid #2a2f3a;color:#fff;padding:12px 16px;border-radius:12px;cursor:pointer;font-size:14px}
-    .btn:disabled{opacity:.4;cursor:not-allowed}
+    /* bottom buttons */
     #uiBottom{position:absolute;inset:auto 0 0 0;display:flex;gap:8px;padding:10px;justify-content:center;z-index:2;pointer-events:none;flex-wrap:wrap}
     #uiBottom .btn{pointer-events:auto}
-    /* 오버레이 */
-    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,8,14,.75);z-index:4}
-    .panel{width:min(680px,92vw);background:#0f1522;border:1px solid #2a2f3a;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
-    .row{display:flex;gap:8px;flex-wrap:wrap}
-    .col{flex:1 1 200px}
-    input,select{width:100%;background:#0b0e14;color:#eee;border:1px solid #2a2f3a;border-radius:10px;padding:12px;font-size:16px}
-    h1,h2{margin:.3em 0}
-    .center{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-    .label{font-size:12px;opacity:.8;margin-bottom:6px}
-    .hero{font-size:18px}
+    .btn{background:#1b1f2a;border:1px solid #2a2f3a;color:#fff;padding:12px 16px;border-radius:12px;cursor:pointer;font-size:14px}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
     .danger{background:#5a1f1f;border-color:#7a2b2b}
-    .ok{background:#1f5a2b;border-color:#2b7a3a}
+    /* overlays */
+    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,8,14,.75);z-index:4}
+    .panel{width:min(720px,92vw);background:#0f1522;border:1px solid #2a2f3a;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .col{flex:1 1 240px}
+    input,select{width:100%;background:#0b0e14;color:#eee;border:1px solid #2a2f3a;border-radius:12px;padding:12px;font-size:16px}
+    h1{margin:.2em 0;font-weight:800;letter-spacing:.5px}
+    .subtitle{opacity:.85;margin:.6em 0 1em}
+    .center{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
     .muted{opacity:.8}
+    /* home hero like slither */
+    .logo{font-size:48px;font-weight:900;letter-spacing:.5px;background:linear-gradient(90deg,#8a7cff,#2dd4bf);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 4px 20px rgba(45,212,191,.15)}
+    .pill{border-radius:24px;padding:12px 18px;background:#171c2b;border:1px solid #2a2f3a}
+    /* spinner */
+    .spinner{width:56px;height:56px;border-radius:50%;border:6px solid rgba(255,255,255,.15);border-top-color:#8a7cff;animation:spin 0.9s linear infinite;margin:16px auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
-  <div id="banner"><div style="width:728px;max-width:92vw;height:100%;display:flex;align-items:center;justify-content:center"><span class="muted">[Banner Ad Slot]</span></div></div>
+  <div id="banner">
+    <div style="width:728px;max-width:92vw;height:100%;display:flex;align-items:center;justify-content:center">
+      <span class="muted">[Banner Ad Slot]</span>
+    </div>
+  </div>
 
   <div id="wrap">
     <canvas id="game"></canvas>
@@ -48,57 +57,71 @@
       <div class="chip" id="ws">WS: auto</div>
     </div>
 
-    <pre id="log"></pre>
-
     <div id="uiBottom">
-      <button class="btn" id="btnExchange" disabled>교환 완료</button>
-      <button class="btn" id="btnNext" disabled>다음 진행</button>
-      <button class="btn danger" id="btnResign" disabled>포기하기</button>
+      <button class="btn" id="btnReady" disabled>Ready</button>
+      <button class="btn" id="btnNext"  disabled>Next</button>
+      <button class="btn danger" id="btnResign" disabled>Resign</button>
     </div>
 
-    <!-- ▶ 입장/설정 오버레이 -->
-    <div class="overlay" id="ovrLobby">
-      <div class="panel">
-        <h1>Hold’em&SHOT (.io)</h1>
-        <p class="muted">이미지 스프라이트 없이 Canvas로 그린 1:1 포커 + 러시안룰렛</p>
-        <div class="row">
+    <!-- Home / Lobby -->
+    <div class="overlay" id="ovrHome">
+      <div class="panel" style="text-align:center">
+        <div class="logo">Hold’em & SHOT</div>
+        <div class="subtitle">1v1 Hold’em + Russian Roulette</div>
+
+        <div class="row" style="margin:10px 0 6px">
           <div class="col">
-            <div class="label">플레이어 이름</div>
-            <input id="inpName" maxlength="12" placeholder="이름(최대 12자)" />
+            <input id="inpName" maxlength="12" placeholder="Nickname (max 12)"/>
           </div>
           <div class="col">
-            <div class="label">러시안룰렛 총알 개수</div>
-            <select id="selBullets">
-              <option value="1">1발</option>
-              <option value="2">2발</option>
-              <option value="3">3발</option>
+            <select id="selBullets" title="Bullets">
+              <option value="1">Bullets: 1</option>
+              <option value="2">Bullets: 2</option>
+              <option value="3">Bullets: 3</option>
             </select>
           </div>
         </div>
-        <div class="center" style="margin-top:12px">
-          <button class="btn" id="btnQuick">빠른 매칭(같은 총알 수끼리)</button>
-          <button class="btn" id="btnCreate">방 코드 생성</button>
-          <span style="align-self:center" class="muted">또는</span>
-          <input id="inpCode" placeholder="코드 입력" style="width:160px"/>
-          <button class="btn" id="btnJoin">코드 입장</button>
+
+        <div class="center" style="margin-top:10px">
+          <button class="btn pill" id="btnPlay">Play (Quick Match)</button>
+        </div>
+
+        <div class="center muted" style="margin:12px 0 6px">or</div>
+
+        <div class="row">
+          <div class="col">
+            <button class="btn" id="btnCreate">Create Room</button>
+          </div>
+          <div class="col" style="display:flex;gap:8px">
+            <input id="inpCode" placeholder="Room code" style="flex:1"/>
+            <button class="btn" id="btnJoin">Join</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- ▶ 러시안룰렛/결과 오버레이 -->
+    <!-- Connecting -->
+    <div class="overlay" id="ovrConnecting" style="display:none">
+      <div class="panel" style="text-align:center">
+        <h1>Connecting…</h1>
+        <div class="spinner"></div>
+        <div class="muted" id="connDesc">Searching players…</div>
+      </div>
+    </div>
+
+    <!-- Modal (Showdown / Roulette / End) -->
     <div class="overlay" id="ovrModal" style="display:none">
       <div class="panel" id="modalContent"></div>
     </div>
   </div>
 
-  <!-- WS 엔드포인트(필요시 변경) -->
+  <!-- WebSocket endpoint (change if needed) -->
   <script>window.WS_URL = "wss://holdemnshot.onrender.com/ws";</script>
 
-  <!-- SW 등록 & 설치 버튼 등 -->
+  <!-- SW & mobile quirks -->
   <script>
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
-    // iOS 줌 방지
-    document.addEventListener('gesturestart', e=>e.preventDefault());
+    document.addEventListener('gesturestart', e=>e.preventDefault()); // iOS zoom
   </script>
 
   <script type="module" src="client.js"></script>
