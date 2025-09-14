@@ -261,11 +261,21 @@ function pushState(room){
 
 function serializeStateFor(pid, st){
   const opp = Object.keys(st.hands).find(k=>parseInt(k)!==pid);
+  const oppId = parseInt(opp);
+  const readyCount = Object.values(st.ready).filter(Boolean).length;
   return {
     round: st.round,
     phase: st.phase,
     board: st.board.slice(),
     you: { name: nameOf(pid), hp: st.hp[pid], hand: st.hands[pid].slice(), exchangeSelectable: st.exchangeSelectable[pid] },
+    opp:  { name: nameOf(oppId), hp: st.hp[oppId], hand: [\"??\",\"??\"], exchangeSelectable: []},
+    oppIsAI: !!clients.get(oppId)?.isAI,
+    readyCount,
+    total: 2,
+    turnNote: \"\",
+    message: st.message + (readyCount ? ` (Ready ${readyCount}/2)` : \"\")
+  };
+},
     opp:  { name: nameOf(parseInt(opp)), hp: st.hp[opp], hand: ["??","??"], exchangeSelectable: []},
     turnNote: "",
     message: st.message

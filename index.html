@@ -54,8 +54,15 @@
     <div class="title">🂡 Hold'em<span style="opacity:.6">&</span>SHOT <span class="badge">PWA</span></div>
     <div class="subtitle">1v1 Texas Hold'em + 러시안룰렛 (조커 효과 포함) — Quick Match 8초 대기 후 AI 매칭</div>
 
-    <div class="row" style="align-items:center; margin:4px 0 10px 0;">
-      <div id="connIndicator" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b30;margin-right:6px;border:1px solid #1e242c;"></div>
+    
+    <div class="row" style="align-items:center; margin:4px 0 10px 0; gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="connIndicator" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ff3b30;border:1px solid #1e242c;"></div>
+        <span style="font-size:14px;color:var(--muted)">Server</span>
+      </div>
+      <div class="btn" id="btn-retry" style="padding:6px 10px;font-size:13px;line-height:1;border-radius:10px;">Retry</div>
+    </div>
+    
       <span style="font-size:14px;color:var(--muted)">Server</span>
     </div>
     
@@ -104,8 +111,15 @@
     <div class="title">🗝️ Private Room</div>
     <div class="subtitle">코드를 공유하면 친구가 입장할 수 있어요.</div>
 
-    <div class="row" style="align-items:center; margin:4px 0 10px 0;">
-      <div id="connIndicator" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b30;margin-right:6px;border:1px solid #1e242c;"></div>
+    
+    <div class="row" style="align-items:center; margin:4px 0 10px 0; gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="connIndicator" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ff3b30;border:1px solid #1e242c;"></div>
+        <span style="font-size:14px;color:var(--muted)">Server</span>
+      </div>
+      <div class="btn" id="btn-retry" style="padding:6px 10px;font-size:13px;line-height:1;border-radius:10px;">Retry</div>
+    </div>
+    
       <span style="font-size:14px;color:var(--muted)">Server</span>
     </div>
     
@@ -133,7 +147,7 @@
       <div class="nav">
         <div class="btn" id="btn-resign">Resign</div>
         <div class="btn" id="btn-ready">Ready</div>
-        <div class="btn" id="btn-next">Next</div>
+        <div class="btn" id="btn-next" style="display:none">Next</div>
         <div class="btn" id="btn-exchange">Exchange (0/2)</div>
       </div>
     </div>
